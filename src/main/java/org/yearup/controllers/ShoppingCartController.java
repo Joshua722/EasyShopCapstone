@@ -9,10 +9,13 @@ import org.yearup.data.ProductDao;
 import org.yearup.data.ShoppingCartDao;
 import org.yearup.data.UserDao;
 import org.yearup.models.ShoppingCart;
+import org.yearup.models.ShoppingCartItem;
 import org.yearup.models.User;
 import org.yearup.models.Product;
 
 import java.security.Principal;
+import java.sql.ResultSet;
+import java.util.Map;
 
 @RestController
 @RequestMapping("cart")
@@ -25,9 +28,15 @@ public class ShoppingCartController {
     private ProductDao productDao;
 
     @Autowired
+    public ShoppingCartController(ShoppingCartDao shoppingCartDao, UserDao userDao, ProductDao productDao) {
+        this.shoppingCartDao = shoppingCartDao;
+        this.userDao = userDao;
+        this.productDao = productDao;
+    }
+
     @GetMapping("")
     // each method in this controller requires a Principal object as a parameter
-    public ShoppingCart getCart(Principal principal) {
+    public Map<Integer, ShoppingCartItem> getCart(Principal principal) {
         try {
             // get the currently logged in username
             String userName = principal.getName();
@@ -36,6 +45,7 @@ public class ShoppingCartController {
             int userId = user.getId();
             if (userId > 0) {
                 // use the shoppingcartDao to get all items in the cart and return the cart
+
                 return shoppingCartDao.getByUserId(userId);
             } else {
                 throw new ResponseStatusException(HttpStatus.NO_CONTENT);
@@ -48,11 +58,25 @@ public class ShoppingCartController {
 
     // add a POST method to add a product to the cart - the url should be
     // https://localhost:8080/cart/products/15 (15 is the productId to be added
-    @Autowired
-    @PostMapping("/add/{id}/{quantity}")
-    public ShoppingCart addProduct(Product product, Principal principal){
-    verifyUser(principal);
 
+    @PostMapping("/add/{productId}/{quantity}")
+    public void addProduct(Principal principal, @PathVariable int productId, @PathVariable int quantity) {
+        if (verifyUser(principal)) {
+            try {
+                String userName = principal.getName();
+                User user = userDao.getByUserName(userName);
+                int userId = user.getId();
+
+                Product product = productDao.getById(productId);
+                if (product != null) {
+                    shoppingCartDao.addProduct(userId, productId, quantity);
+                } else {
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Product does not exist.");
+                }
+            } catch (Exception e) {
+                throw new ResponseStatusException(HttpStatus.NO_CONTENT, "Please make sure to login");
+            }
+        }
     }
 
     // add a PUT method to update an existing product in the cart - the url should be
@@ -74,6 +98,7 @@ public class ShoppingCartController {
         }
     }
 
+    @ModelAttribute //  Will be executed before handler methods above (GET & POST)... verifies authentication first.
     public boolean verifyUser(Principal principal) {
         String userName = principal.getName();
         if (userName == null) {
