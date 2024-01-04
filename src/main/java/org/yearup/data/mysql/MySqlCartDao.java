@@ -6,6 +6,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.yearup.data.ProductDao;
 import org.yearup.data.ShoppingCartDao;
 import org.yearup.models.Product;
+import org.yearup.models.ShoppingCart;
 import org.yearup.models.ShoppingCartItem;
 
 
@@ -29,55 +30,29 @@ public class MySqlCartDao extends MySqlDaoBase implements ShoppingCartDao {
         this.productDao = productDao;
     }
 
-    /*
-    *  public Map<Integer, ShoppingCart> getByUserId(int userId) {
-        Map<Integer, ShoppingCart> items = new HashMap<>();
-        String sql = """
-                SELECT *
-                FROM shopping_cart
-                WHERE user_id = ?""";
-        try (Connection connection = getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, userId);
-            ResultSet rs = statement.executeQuery();
-            while (rs.next()) {
-                int productId = rs.getInt("product_id");
-                Product product = productDao.getById(productId);
-                ShoppingCartItem temp = new ShoppingCartItem();
-                temp.setQuantity(rs.getInt("quantity"));
-                items.put(productId, temp);
-
-            }
-            return items;
-        } catch (SQLException e) {
-            throw new RuntimeException("Error retrieving shopping cart items.", e);
-        }
-    }
-    * */
-
-    @Override
-    public Map<Integer, ShoppingCartItem> getByUserId(int userId) {
+      public ShoppingCart getByUserId(int userId) {
         Map<Integer, ShoppingCartItem> items = new HashMap<>();
         String sql = """
                 SELECT *
                 FROM shopping_cart
                 WHERE user_id = ?""";
         try (Connection connection = getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet rs = statement.executeQuery()) {
             statement.setInt(1, userId);
-            ResultSet rs = statement.executeQuery();
             while (rs.next()) {
                 int productId = rs.getInt("product_id");
+                int quantity = rs.getInt("quantity");
                 Product product = productDao.getById(productId);
-                ShoppingCartItem temp = new ShoppingCartItem();
-                temp.setQuantity(rs.getInt("quantity"));
+                ShoppingCartItem temp = new ShoppingCartItem(product,quantity);
                 items.put(productId, temp);
 
             }
-            return items;
+
         } catch (SQLException e) {
             throw new RuntimeException("Error retrieving shopping cart items.", e);
         }
+        return new ShoppingCart(items);
     }
 
     @Override
@@ -98,7 +73,7 @@ public class MySqlCartDao extends MySqlDaoBase implements ShoppingCartDao {
     }
 
     @Override
-    public void addProduct(int userId, int productId) {
+    public ShoppingCart addProduct(int userId, int productId) {
         String sql = """
                 INSERT INTO shopping_cart(user_id,product_id,quantity)
                 VALUES (?,?,1) ON DUPLICATE KEY UPDATE quantity = quantity + 1
@@ -113,22 +88,9 @@ public class MySqlCartDao extends MySqlDaoBase implements ShoppingCartDao {
             }
 
         } catch (SQLException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Error in adding product");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR);
         }
-    }
-
-    protected static Product cartItems(ResultSet row) throws SQLException {
-        int productId = row.getInt("product_id");
-        String name = row.getString("name");
-        BigDecimal price = row.getBigDecimal("price");
-        int categoryId = row.getInt("category_id");
-        String description = row.getString("description");
-        String color = row.getString("color");
-        int stock = row.getInt("stock");
-        boolean isFeatured = row.getBoolean("featured");
-        String imageUrl = row.getString("image_url");
-
-        return new Product(productId, name, price, categoryId, description, color, stock, isFeatured, imageUrl);
+        return getByUserId(userId);
     }
 
 }
