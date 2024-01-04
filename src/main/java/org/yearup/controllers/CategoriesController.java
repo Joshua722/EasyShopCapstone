@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("categories")
-@CrossOrigin
+@CrossOrigin(origins = "http://localhost:63342")
 public class CategoriesController
 {
     private CategoryDao categoryDao;

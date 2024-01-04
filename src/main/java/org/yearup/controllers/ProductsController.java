@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("products")
-@CrossOrigin
+@CrossOrigin(origins = "http://localhost:63342")
 public class ProductsController
 {
     private ProductDao productDao;

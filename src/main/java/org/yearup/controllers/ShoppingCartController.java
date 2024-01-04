@@ -8,16 +8,14 @@ import org.springframework.web.server.ResponseStatusException;
 import org.yearup.data.ProductDao;
 import org.yearup.data.ShoppingCartDao;
 import org.yearup.data.UserDao;
-import org.yearup.models.ShoppingCartItem;
+import org.yearup.models.ShoppingCart;
 import org.yearup.models.User;
-import org.yearup.models.Product;
 
 import java.security.Principal;
-import java.util.Map;
 
 @RestController
 @RequestMapping("cart")
-@CrossOrigin
+@CrossOrigin(origins = "http://localhost:63342")
 // only logged in users should have access to these actions
 public class ShoppingCartController {
     // a shopping cart requires
@@ -35,7 +33,7 @@ public class ShoppingCartController {
     @GetMapping("")
     @ResponseStatus(value = HttpStatus.OK)
     // each method in this controller requires a Principal object as a parameter
-    public Map<Integer, ShoppingCartItem> getCart(Principal principal) {
+    public ShoppingCart getCart(Principal principal) {
         try {
             if (principal != null && principal.getName() != null) {
                 // get the currently logged in username
@@ -56,32 +54,30 @@ public class ShoppingCartController {
     // add a POST method to add a product to the cart - the url should be
     // https://localhost:8080/cart/products/15 (15 is the productId to be added
     @PostMapping("products/{productId}")
-    @PreAuthorize("isAuthenticated()")
-    public void addProduct(Principal principal, @PathVariable int productId) {
-        if (principal != null && principal.getName() != null) {
-            try {
-                String userName = principal.getName();
-                User user = userDao.getByUserName(userName);
-                int userId = user.getId();
-
-                Product product = productDao.getById(productId);
-                if (product != null) {
-                    shoppingCartDao.addProduct(userId, productId);
-                    throw new ResponseStatusException(HttpStatus.CREATED);
-                } else {
-                    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Product does not exist.");
-                }
-            } catch (Exception e) {
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR);
+    public ShoppingCart addToCart(@PathVariable int productId, Principal principal) {
+        try {
+            if (principal == null) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
             }
-        } else {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+
+            String userName = principal.getName();
+            User user = userDao.getByUserName(userName);
+
+            if (user == null) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found");
+            }
+
+            int userId = user.getId();
+            return shoppingCartDao.addProduct(userId, productId);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to add product to cart :.", e);
         }
     }
 
     // add a DELETE method to clear all products from the current users cart
     // https://localhost:8080/cart
     @DeleteMapping("")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_USER')")
     public void clearCart(Principal principal) {
         if (principal != null && principal.getName() != null) {
             try {
