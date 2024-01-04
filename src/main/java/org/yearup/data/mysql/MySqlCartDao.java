@@ -1,5 +1,6 @@
 package org.yearup.data.mysql;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
@@ -24,7 +25,7 @@ import java.util.Map;
 
 public class MySqlCartDao extends MySqlDaoBase implements ShoppingCartDao {
     private ProductDao productDao;
-
+@Autowired
     public MySqlCartDao(DataSource dataSource, ProductDao productDao) {
         super(dataSource);
         this.productDao = productDao;
@@ -37,21 +38,22 @@ public class MySqlCartDao extends MySqlDaoBase implements ShoppingCartDao {
                 FROM shopping_cart
                 WHERE user_id = ?""";
         try (Connection connection = getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql);
-             ResultSet rs = statement.executeQuery()) {
+             PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, userId);
-            while (rs.next()) {
-                int productId = rs.getInt("product_id");
-                int quantity = rs.getInt("quantity");
-                Product product = productDao.getById(productId);
-                ShoppingCartItem temp = new ShoppingCartItem(product,quantity);
-                items.put(productId, temp);
-
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    int productId = resultSet.getInt("product_id");
+                    int quantity = resultSet.getInt("quantity");
+                    Product product = productDao.getById(productId);
+                    ShoppingCartItem item = new ShoppingCartItem(product, quantity);
+                    items.put(productId, item);
+                }
             }
 
-        } catch (SQLException e) {
+            } catch (SQLException e) {
             throw new RuntimeException("Error retrieving shopping cart items.", e);
         }
+
         return new ShoppingCart(items);
     }
 

@@ -15,7 +15,7 @@ import java.security.Principal;
 
 @RestController
 @RequestMapping("cart")
-@CrossOrigin
+@CrossOrigin(origins = "http://localhost:63342")
 // only logged in users should have access to these actions
 public class ShoppingCartController {
     // a shopping cart requires
@@ -54,8 +54,8 @@ public class ShoppingCartController {
     // add a POST method to add a product to the cart - the url should be
     // https://localhost:8080/cart/products/15 (15 is the productId to be added
     @PostMapping("products/{productId}")
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_USER')")
-    public ShoppingCart addProduct(Principal principal, @PathVariable int productId) {
+//    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_USER')")
+    public ShoppingCart addProduct(@PathVariable int productId, Principal principal) {
         try {
             if (principal == null) {
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
