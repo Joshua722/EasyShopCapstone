@@ -1,13 +1,11 @@
 package org.yearup.data.mysql;
 
-import org.apache.ibatis.jdbc.SQL;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 import org.yearup.data.ProductDao;
 import org.yearup.data.ShoppingCartDao;
 import org.yearup.models.Product;
-import org.yearup.models.ShoppingCart;
 import org.yearup.models.ShoppingCartItem;
 
 import javax.sql.DataSource;
@@ -16,11 +14,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 
-import static org.yearup.data.mysql.MySqlProductDao.mapRow;
 
 @Component
 
@@ -35,7 +30,6 @@ public class MySqlCartDao extends MySqlDaoBase implements ShoppingCartDao {
     @Override
     public HashMap<Integer, ShoppingCartItem> getByUserId(int userId) {
         HashMap<Integer, ShoppingCartItem> items = new HashMap<>();
-        int count = 1;
         String sql = """
                 SELECT product_id, quantity
                 FROM shopping_cart
@@ -49,15 +43,17 @@ public class MySqlCartDao extends MySqlDaoBase implements ShoppingCartDao {
             {
                 int productId = rs.getInt("product_id");
                 Product product = productDao.getById(productId);
-                ShoppingCartItem temp = new ShoppingCartItem();
-                temp.setProduct(product);
-                temp.setQuantity(rs.getInt(3));
-                items.put(count, temp);
-                count++;
+                if (product != null)
+                {
+                    ShoppingCartItem temp = new ShoppingCartItem();
+                    temp.setProduct(product);
+                    temp.setQuantity(rs.getInt("quantity"));
+                    items.put(productId, temp);
+                }
             }
             return items;
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Error retrieving shopping cart items.", e);
         }
     }
 
@@ -69,13 +65,13 @@ public class MySqlCartDao extends MySqlDaoBase implements ShoppingCartDao {
         try (Connection connection = getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, userId);
-            int rowEquals = statement.executeUpdate();
-            if (rowEquals == 0) {
-                throw new ResponseStatusException(HttpStatus.ACCEPTED, "Item has been cleared");
+            int rows = statement.executeUpdate();
+            if (rows == 0) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cart is already empty");
             }
         }
         catch(SQLException e){
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error in clearing cart!");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error clearing cart!");
         }
     }
 
