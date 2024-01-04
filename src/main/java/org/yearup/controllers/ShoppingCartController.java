@@ -3,18 +3,15 @@ package org.yearup.controllers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.server.ResponseStatusException;
 import org.yearup.data.ProductDao;
 import org.yearup.data.ShoppingCartDao;
 import org.yearup.data.UserDao;
-import org.yearup.models.ShoppingCart;
 import org.yearup.models.ShoppingCartItem;
 import org.yearup.models.User;
 import org.yearup.models.Product;
 
 import java.security.Principal;
-import java.sql.ResultSet;
 import java.util.Map;
 
 @RestController
@@ -58,9 +55,8 @@ public class ShoppingCartController {
 
     // add a POST method to add a product to the cart - the url should be
     // https://localhost:8080/cart/products/15 (15 is the productId to be added
-
-    @PostMapping("/add/{productId}/{quantity}")
-    public void addProduct(Principal principal, @PathVariable int productId, @PathVariable int quantity) {
+    @PostMapping("/add/product/{productId}")
+    public void addProduct(Principal principal, @PathVariable int productId) {
         if (verifyUser(principal)) {
             try {
                 String userName = principal.getName();
@@ -69,7 +65,7 @@ public class ShoppingCartController {
 
                 Product product = productDao.getById(productId);
                 if (product != null) {
-                    shoppingCartDao.addProduct(userId, productId, quantity);
+                    shoppingCartDao.addProduct(userId, productId, 1);
                 } else {
                     throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Product does not exist.");
                 }
@@ -78,11 +74,6 @@ public class ShoppingCartController {
             }
         }
     }
-
-    // add a PUT method to update an existing product in the cart - the url should be
-    // https://localhost:8080/cart/products/15 (15 is the productId to be updated)
-    // the BODY should be a ShoppingCartItem - quantity is the only value that will be updated
-
 
     // add a DELETE method to clear all products from the current users cart
     // https://localhost:8080/cart
@@ -106,5 +97,8 @@ public class ShoppingCartController {
         }
         return true;
     }
-
 }
+// BONUS Below:
+// add a PUT method to update an existing product in the cart - the url should be
+// https://localhost:8080/cart/products/15 (15 is the productId to be updated)
+// the BODY should be a ShoppingCartItem - quantity is the only value that will be updated
