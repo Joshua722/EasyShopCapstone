@@ -47,7 +47,7 @@ public class CategoriesController
         return productDao.listByCategoryId(categoryId);
     }
 
-    @PostMapping("add")
+    @PostMapping("")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     public Category addCategory(@RequestBody Category category)
     {
@@ -63,7 +63,7 @@ public class CategoriesController
     }
 
 
-    @DeleteMapping("delete/{id}")
+    @DeleteMapping("{id}")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     public void deleteCategory(@PathVariable int id)
     {
