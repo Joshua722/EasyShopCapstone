@@ -31,12 +31,11 @@ public class ShoppingCartController {
     }
 
     @GetMapping("")
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_USER')")
     @ResponseStatus(value = HttpStatus.OK)
     // each method in this controller requires a Principal object as a parameter
     public ShoppingCart getCart(Principal principal) {
         try {
-            if (principal != null) {
+            if (principal != null && principal.getName() != null) {
                 // get the currently logged in username
                 String userName = principal.getName();
                 // find database user by userId
@@ -44,34 +43,34 @@ public class ShoppingCartController {
                 int userId = user.getId();
                 // use the shoppingcartDao to get all items in the cart and return the cart
                 return shoppingCartDao.getByUserId(userId);
+            } else {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please make sure to login");
             }
         } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Oops... our bad.");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Oops... our bad.");
         }
-        return null;
     }
 
     // add a POST method to add a product to the cart - the url should be
     // https://localhost:8080/cart/products/15 (15 is the productId to be added
     @PostMapping("products/{productId}")
-//    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_USER')")
-    public ShoppingCart addProduct(@PathVariable int productId, Principal principal) {
+    public ShoppingCart addToCart(@PathVariable int productId, Principal principal) {
         try {
             if (principal == null) {
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
             }
+
             String userName = principal.getName();
             User user = userDao.getByUserName(userName);
+
             if (user == null) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-                // get the currently logged in username
-                // use the shoppingcartDao to get all items in the cart and return the cart
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found");
             }
-            // find database user by userId
+
             int userId = user.getId();
             return shoppingCartDao.addProduct(userId, productId);
         } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Oops... our bad.");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to add product to cart :.", e);
         }
     }
 

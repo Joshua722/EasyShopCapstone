@@ -170,7 +170,9 @@ class ShoppingCartService {
                  };
 
                  templateBuilder.append("error", data, "errors")
+
              })
+             location.reload();
     }
 
     updateCartDisplay()

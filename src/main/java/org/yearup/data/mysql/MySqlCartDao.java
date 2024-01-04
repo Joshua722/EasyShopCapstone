@@ -23,23 +23,22 @@ import java.util.Map;
 
 @Component
 
-public class MySqlCartDao extends MySqlDaoBase implements ShoppingCartDao {
+public class MySqlCartDao implements ShoppingCartDao {
+    @Autowired
+    private DataSource dataSource;
+    @Autowired
     private ProductDao productDao;
-@Autowired
-    public MySqlCartDao(DataSource dataSource, ProductDao productDao) {
-        super(dataSource);
-        this.productDao = productDao;
-    }
 
-      public ShoppingCart getByUserId(int userId) {
+    @Override
+    public ShoppingCart getByUserId(int userId) {
+
         Map<Integer, ShoppingCartItem> items = new HashMap<>();
-        String sql = """
-                SELECT *
-                FROM shopping_cart
-                WHERE user_id = ?""";
-        try (Connection connection = getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT * FROM shopping_cart WHERE user_id = ?")) {
             statement.setInt(1, userId);
+
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
                     int productId = resultSet.getInt("product_id");
@@ -49,9 +48,9 @@ public class MySqlCartDao extends MySqlDaoBase implements ShoppingCartDao {
                     items.put(productId, item);
                 }
             }
+        } catch (SQLException e) {
 
-            } catch (SQLException e) {
-            throw new RuntimeException("Error retrieving shopping cart items.", e);
+            e.printStackTrace();
         }
 
         return new ShoppingCart(items);
@@ -62,7 +61,7 @@ public class MySqlCartDao extends MySqlDaoBase implements ShoppingCartDao {
         String sql = """
                 DELETE FROM shopping_cart
                 WHERE user_id = ?""";
-        try (Connection connection = getConnection();
+        try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, userId);
             int rows = statement.executeUpdate();
@@ -80,14 +79,11 @@ public class MySqlCartDao extends MySqlDaoBase implements ShoppingCartDao {
                 INSERT INTO shopping_cart(user_id,product_id,quantity)
                 VALUES (?,?,1) ON DUPLICATE KEY UPDATE quantity = quantity + 1
                 """;
-        try (Connection connection = getConnection();
+        try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, userId);
             statement.setInt(2, productId);
-            int rowEquals = statement.executeUpdate();
-            if (rowEquals > 0) {
-
-            }
+            statement.executeUpdate();
 
         } catch (SQLException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR);
