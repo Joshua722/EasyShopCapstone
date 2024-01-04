@@ -8,8 +8,8 @@ import java.util.Map;
 
 public interface ShoppingCartDao
 {
-    HashMap<Integer, ShoppingCartItem> getByUserId(int userId);
+    Map<Integer, ShoppingCartItem> getByUserId(int userId);
     void clearCart(int userId);
-    void addProduct(int userId, int productId, int quantity);
+    void addProduct(int userId, int productId);
 
 }

@@ -8,6 +8,7 @@ import org.yearup.data.ShoppingCartDao;
 import org.yearup.models.Product;
 import org.yearup.models.ShoppingCartItem;
 
+
 import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -15,6 +16,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.Map;
 
 
 @Component
@@ -27,29 +29,50 @@ public class MySqlCartDao extends MySqlDaoBase implements ShoppingCartDao {
         this.productDao = productDao;
     }
 
-    @Override
-    public HashMap<Integer, ShoppingCartItem> getByUserId(int userId) {
-        HashMap<Integer, ShoppingCartItem> items = new HashMap<>();
+    /*
+    *  public Map<Integer, ShoppingCart> getByUserId(int userId) {
+        Map<Integer, ShoppingCart> items = new HashMap<>();
         String sql = """
-                SELECT product_id, quantity
+                SELECT *
                 FROM shopping_cart
                 WHERE user_id = ?""";
-        try(Connection connection = getConnection();
-            PreparedStatement statement = connection.prepareStatement(sql))
-        {
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, userId);
             ResultSet rs = statement.executeQuery();
-            while (rs.next())
-            {
+            while (rs.next()) {
                 int productId = rs.getInt("product_id");
                 Product product = productDao.getById(productId);
-                if (product != null)
-                {
-                    ShoppingCartItem temp = new ShoppingCartItem();
-                    temp.setProduct(product);
-                    temp.setQuantity(rs.getInt("quantity"));
-                    items.put(productId, temp);
-                }
+                ShoppingCartItem temp = new ShoppingCartItem();
+                temp.setQuantity(rs.getInt("quantity"));
+                items.put(productId, temp);
+
+            }
+            return items;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error retrieving shopping cart items.", e);
+        }
+    }
+    * */
+
+    @Override
+    public Map<Integer, ShoppingCartItem> getByUserId(int userId) {
+        Map<Integer, ShoppingCartItem> items = new HashMap<>();
+        String sql = """
+                SELECT *
+                FROM shopping_cart
+                WHERE user_id = ?""";
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, userId);
+            ResultSet rs = statement.executeQuery();
+            while (rs.next()) {
+                int productId = rs.getInt("product_id");
+                Product product = productDao.getById(productId);
+                ShoppingCartItem temp = new ShoppingCartItem();
+                temp.setQuantity(rs.getInt("quantity"));
+                items.put(productId, temp);
+
             }
             return items;
         } catch (SQLException e) {
@@ -69,34 +92,32 @@ public class MySqlCartDao extends MySqlDaoBase implements ShoppingCartDao {
             if (rows == 0) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cart is already empty");
             }
-        }
-        catch(SQLException e){
+        } catch (SQLException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error clearing cart!");
         }
     }
 
     @Override
-    public void addProduct(int userId, int productId, int quantity) {
+    public void addProduct(int userId, int productId) {
         String sql = """
                 INSERT INTO shopping_cart(user_id,product_id,quantity)
-                VALUES (?,?,?)
+                VALUES (?,?,1) ON DUPLICATE KEY UPDATE quantity = quantity + 1
                 """;
         try (Connection connection = getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, userId);
             statement.setInt(2, productId);
-            statement.setInt(3, quantity);
             int rowEquals = statement.executeUpdate();
             if (rowEquals > 0) {
-                throw new ResponseStatusException(HttpStatus.ACCEPTED, "Item has been added");
+
             }
 
         } catch (SQLException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error in adding product");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Error in adding product");
         }
     }
-    protected static Product cartItems(ResultSet row) throws SQLException
-    {
+
+    protected static Product cartItems(ResultSet row) throws SQLException {
         int productId = row.getInt("product_id");
         String name = row.getString("name");
         BigDecimal price = row.getBigDecimal("price");
